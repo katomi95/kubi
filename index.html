@@ -431,7 +431,7 @@ function rootPt(){const L=G.L;const b=cellC(L.s[0],L.s[1]+1);return{x:b.x,y:b.y+
 function loadLevel(i){
   G.idx=i; G.L=loadStage(STAGES[i]); G.R=newRun(G.L);
   G.anim=null;G.bump=null;G.retract=null;G.queue.length=0;G.stuck=false;G.stuckT=0;G.clearT=0;G.introT=0;
-  G.bubbles.length=0;G.popups.length=0;G.gulpT=0;
+  G.bubbles.length=0;G.popups.length=0;G.gulpT=0;G.intro=null;
   const c=cellC(G.L.s[0],G.L.s[1]);Object.assign(G.head,{x:c.x,y:c.y,face:1,sq:0,sqv:0,dizzy:0,tilt:0,lookX:1,lookY:0});
   buildBackdrop(i);
   fitCamera(true);
@@ -445,7 +445,8 @@ function startStage(i){
   el.hud.classList.remove('hide'); el.retry.classList.remove('hide'); el.menu.classList.remove('hide');
   if(isTouch) el.pad.classList.remove('hide');
   showHint(STAGES[i].hint);
-  setTimeout(()=>{if(G.scene==='play'&&G.idx===i&&G.R.path.length===1) say('me',['遅いなあ……','まだかなあ','首を長くして待つか……'][i%3],2.2);},700);
+  if(i===0) G.intro={t:0};  // 1面の最初だけ：「遅いなあ……」→「首を長くして待つか……」→ にゅっと1マス
+  else setTimeout(()=>{if(G.scene==='play'&&G.idx===i&&G.R.path.length===1) say('me',['遅いなあ……','まだかなあ'][i%2],2.2);},700);
 }
 function toTitle(){
   G.scene='title'; el.card.classList.add('hide'); el.hud.classList.add('hide'); el.retry.classList.add('hide');
@@ -481,7 +482,7 @@ function updateHeld(dt){
   for(const d in held){const h=held[d];h.t+=dt;const at=h.n===0?.32:.32+h.n*.15;if(h.t>=at){h.n++;push(d);}}
 }
 function push(d){
-  if(G.scene!=='play'||G.retract) return;
+  if(G.scene!=='play'||G.retract||G.intro) return;
   if(G.queue.length<2) G.queue.push(d);
 }
 // タッチ：どこからでもスワイプ。指を動かした距離ぶん1マスずつ進む
@@ -573,7 +574,7 @@ function afterMove(){
 }
 function retry(){
   if(G.scene==='clear'){el.card.classList.add('hide'); G.scene='play'; loadLevel(G.idx); return;}
-  if(G.scene!=='play'||G.retract) return;
+  if(G.scene!=='play'||G.retract||G.intro) return;
   if(G.R.path.length<=1){G.head.sqv+=3; return;}
   G.retract={t:0,dur:Math.min(.55,.18+G.R.path.length*.015)}; G.queue.length=0; G.anim=null; G.bubbles.length=0;
   SFX.retract(); el.retry.classList.remove('pulse');
@@ -645,6 +646,13 @@ function update(dt){
   const h=G.head;
   if(G.scene==='play'){
     updateHeld(dt);
+    if(G.intro){
+      const it=G.intro,t0=it.t; it.t+=dt; const at=x=>t0<x&&it.t>=x;
+      if(at(.6)) say('me','遅いなあ……',1.9);
+      if(at(2.6)) say('me','首を長くして待つか……',2.0);
+      if(at(4.8)){tryMove('U'); SFX.nyu(); popup(G.head.x+30,G.head.y-40,'にゅっ','#fff',1.4);}
+      if(it.t>=5.0){G.intro=null;}
+    }
     if(G.retract){
       G.retract.t+=dt;
       if(G.retract.t>=G.retract.dur){loadLevel(G.idx);SFX.pop();}
